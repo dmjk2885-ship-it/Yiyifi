@@ -1,16 +1,16 @@
--- // สร้างโดย AI สำหรับคุณ (GKHub Camera Lock)
+-- // สร้างโดย AI สำหรับคุณ (GKHub Camera Free-Lock)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
 local locked = false
+local lockedCFrame = nil
 
 -- // สร้าง ScreenGui
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "GKHub_CameraLock"
+screenGui.Name = "GKHub_CameraStaticLock"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
@@ -18,7 +18,7 @@ screenGui.Parent = player:WaitForChild("PlayerGui")
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Name = "ToggleButton"
 toggleBtn.Size = UDim2.new(0, 45, 0, 45) -- ขนาดเล็กกำลังดีสำหรับมือถือ
-toggleBtn.Position = UDim2.new(0.85, 0, 0.15, 0) -- อยู่มุมขวาบน ไม่บังจอหลัก
+toggleBtn.Position = UDim2.new(0.85, 0, 0.15, 0) -- อยู่มุมขวาบน
 toggleBtn.AnchorPoint = Vector2.new(0.5, 0.5)
 toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 toggleBtn.BackgroundTransparency = 0.6 -- ความจางของพื้นหลัง
@@ -29,12 +29,12 @@ toggleBtn.TextSize = 14
 toggleBtn.Font = Enum.Font.GothamBold
 toggleBtn.Parent = screenGui
 
--- // ทำให้ปุ่มมีความโค้งมนสวยงาม
+-- // ทำให้ปุ่มโค้งมน
 local uiCorner = Instance.new("UICorner")
-uiCorner.CornerRadius = UDim.new(1, 0) -- วงกลม
+uiCorner.CornerRadius = UDim.new(1, 0)
 uiCorner.Parent = toggleBtn
 
--- // ข้อความบอกชื่อค่ายเล็กๆ ใต้ปุ่ม (จางๆ)
+-- // ชื่อค่ายใต้ปุ่มแบบจางๆ
 local creditLabel = Instance.new("TextLabel")
 creditLabel.Size = UDim2.new(0, 60, 0, 15)
 creditLabel.Position = UDim2.new(0, -7, 1, 2)
@@ -46,23 +46,31 @@ creditLabel.TextSize = 10
 creditLabel.Font = Enum.Font.Gotham
 creditLabel.Parent = toggleBtn
 
--- // ฟังก์ชันการทำงานปุ่มเปิด-ปิด
+-- // ฟังก์ชันเปิด-ปิด ล็อกมุมกล้อง
 toggleBtn.MouseButton1Click:Connect(function()
 	locked = not locked
 	if locked then
-		toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255) -- เปลี่ยนเป็นสีฟ้าจางๆ เมื่อเปิด
+		-- บันทึกตำแหน่งและมุมมองของกล้อง ณ ปัจจุบันที่กด
+		lockedCFrame = camera.CFrame
+		camera.CameraType = Enum.CameraType.Scriptable -- เปลี่ยนโหมดกล้องให้ผู้เล่นคุมไม่ได้
+		
+		-- เปลี่ยนสีปุ่มให้รู้ว่าเปิดอยู่ (สีฟ้าจางๆ)
+		toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
 		toggleBtn.BackgroundTransparency = 0.4
 	else
-		toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- กลับเป็นสีดำจางๆ เมื่อปิด
+		-- คืนค่ากล้องกลับเป็นปกติ
+		camera.CameraType = Enum.CameraType.Custom
+		lockedCFrame = nil
+		
+		-- กลับเป็นสีเดิม
+		toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 		toggleBtn.BackgroundTransparency = 0.6
 	end
 end)
 
--- // ล็อกมุมกล้อง (ล็อคทิศทางตัวละครให้หมุนตามมุมกล้องตลอดเวลา)
+-- // ล็อกมุมกล้องให้อยู่กับที่ตลอดเวลาที่เปิดใช้งาน
 RunService.RenderStepped:Connect(function()
-	if locked and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-		local humanoidRootPart = player.Character.HumanoidRootPart
-		-- บังคับให้หน้าตัวละครหันไปทางเดียวกับกล้อง
-		humanoidRootPart.CFrame = CFrame.new(humanoidRootPart.Position, Vector3.new(camera.CFrame.LookVector.X * 9999, humanoidRootPart.Position.Y, camera.CFrame.LookVector.Z * 9999))
+	if locked and lockedCFrame then
+		camera.CFrame = lockedCFrame
 	end
 end)
