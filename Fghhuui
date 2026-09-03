@@ -1,6 +1,7 @@
--- // สร้างโดย AI สำหรับคุณ (GKHub Camera Free-Lock)
+-- // สร้างโดย AI สำหรับคุณ (GKHub - ล็อคมุมกล้อง พร้อมหน้าจอโหลดและคัดลอกลิงก์)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
@@ -8,63 +9,147 @@ local camera = workspace.CurrentCamera
 local locked = false
 local lockedCFrame = nil
 
--- // สร้าง ScreenGui
+-- // ฟังก์ชันสำหรับคัดลอกข้อความ (รองรับระบบ Executor ในมือถือส่วนใหญ่)
+local function copyToClipboard(text)
+	if setclipboard then
+		setclipboard(text)
+	elseif syn and syn.write_clipboard then
+		syn.write_clipboard(text)
+	elseif Clipboard and Clipboard.set then
+		Clipboard.set(text)
+	end
+end
+
+-- // สร้าง ScreenGui หลัก
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "GKHub_CameraStaticLock"
+screenGui.Name = "GKHub_CameraLockGui"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
--- // ปุ่มกด (UI แบบโปร่งใส ไม่เกะกะ)
+-------------------------------------------------------------------
+-- // 1. ส่วนของหน้าจอโหลด (Loading Screen)
+-------------------------------------------------------------------
+local loadFrame = Instance.new("Frame")
+loadFrame.Name = "LoadFrame"
+loadFrame.Size = UDim2.new(0, 200, 0, 70)
+loadFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+loadFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+loadFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+loadFrame.BackgroundTransparency = 0.3
+loadFrame.BorderSizePixel = 0
+loadFrame.Parent = screenGui
+
+local loadCorner = Instance.new("UICorner")
+loadCorner.CornerRadius = UDim.new(0, 10)
+loadCorner.Parent = loadFrame
+
+local loadText = Instance.new("TextLabel")
+loadText.Size = UDim2.new(1, 0, 1, 0)
+loadText.BackgroundTransparency = 1
+loadText.Text = "กำลังดาวโหลด..."
+loadText.TextColor3 = Color3.fromRGB(255, 255, 255)
+loadText.TextSize = 13
+loadText.Font = Enum.Font.GothamBold
+loadText.Parent = loadFrame
+
+-- // อニメーション กำลังดาวโหลด... (2 วินาที)
+task.spawn(function()
+	local dots = {"", ".", "..", "..."}
+	local startTime = tick()
+	
+	-- ช่วงที่ 1: กำลังดาวโหลด (2 วินาที)
+	while tick() - startTime < 2 do
+		for i = 1, #dots do
+			if tick() - startTime >= 2 then break end
+			loadText.Text = "กำลังดาวโหลด" .. dots[i]
+			task.wait(0.3)
+		end
+	end
+	
+	-- ช่วงที่ 2: คัดลอกดิสเสร็จแล้ว (คัดลอกลิงก์อัตโนมัติ และแสดง 1.5 วินาที)
+	loadText.Text = "คัดลอกดิสเสร็จแล้ว!"
+	copyToClipboard("https://discord.gg/Ugssja4wqQ")
+	task.wait(1.5)
+	
+	-- ค่อยๆ เฟดหน้าจอโหลดหายไป
+	local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local fadeOut = TweenService:Create(loadFrame, tweenInfo, {BackgroundTransparency = 1})
+	local textFadeOut = TweenService:Create(loadText, tweenInfo, {TextTransparency = 1})
+	
+	fadeOut:Play()
+	textFadeOut:Play()
+	
+	fadeOut.Completed:Connect(function()
+		loadFrame:Destroy()
+	end)
+end)
+
+-------------------------------------------------------------------
+-- // 2. ส่วนของ UI หลัก (GKHub - ล็อคมุมกล้อง)
+-------------------------------------------------------------------
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 140, 0, 65)
+mainFrame.Position = UDim2.new(0.82, 0, 0.15, 0)
+mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+mainFrame.BackgroundTransparency = 0.5
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 8)
+mainCorner.Parent = mainFrame
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "TitleLabel"
+titleLabel.Size = UDim2.new(1, 0, 0, 20)
+titleLabel.Position = UDim2.new(0, 0, 0, 4)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "GKHub"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextTransparency = 0.3
+titleLabel.TextSize = 12
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Parent = mainFrame
+
 local toggleBtn = Instance.new("TextButton")
-toggleBtn.Name = "ToggleButton"
-toggleBtn.Size = UDim2.new(0, 45, 0, 45) -- ขนาดเล็กกำลังดีสำหรับมือถือ
-toggleBtn.Position = UDim2.new(0.85, 0, 0.15, 0) -- อยู่มุมขวาบน
-toggleBtn.AnchorPoint = Vector2.new(0.5, 0.5)
-toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-toggleBtn.BackgroundTransparency = 0.6 -- ความจางของพื้นหลัง
-toggleBtn.Text = "GK"
-toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleBtn.TextTransparency = 0.3 -- ความจางของตัวหนังสือ
-toggleBtn.TextSize = 14
-toggleBtn.Font = Enum.Font.GothamBold
-toggleBtn.Parent = screenGui
+toggleBtn.Name = "ToggleSwitch"
+toggleBtn.Size = UDim2.new(0, 124, 0, 28)
+toggleBtn.Position = UDim2.new(0.5, 0, 0, 28)
+toggleBtn.AnchorPoint = Vector2.new(0.5, 0)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+toggleBtn.BackgroundTransparency = 0.6
+toggleBtn.Text = "ล็อคมุมกล้อง: ปิด"
+toggleBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
+toggleBtn.TextTransparency = 0.2
+toggleBtn.TextSize = 11
+toggleBtn.Font = Enum.Font.Gotham
+toggleBtn.Parent = mainFrame
 
--- // ทำให้ปุ่มโค้งมน
-local uiCorner = Instance.new("UICorner")
-uiCorner.CornerRadius = UDim.new(1, 0)
-uiCorner.Parent = toggleBtn
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 6)
+btnCorner.Parent = toggleBtn
 
--- // ชื่อค่ายใต้ปุ่มแบบจางๆ
-local creditLabel = Instance.new("TextLabel")
-creditLabel.Size = UDim2.new(0, 60, 0, 15)
-creditLabel.Position = UDim2.new(0, -7, 1, 2)
-creditLabel.BackgroundTransparency = 1
-creditLabel.Text = "GKHub"
-creditLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-creditLabel.TextTransparency = 0.5
-creditLabel.TextSize = 10
-creditLabel.Font = Enum.Font.Gotham
-creditLabel.Parent = toggleBtn
-
--- // ฟังก์ชันเปิด-ปิด ล็อกมุมกล้อง
+-- // ฟังก์ชันการทำงานเปิด-ปิด ล็อคมุมกล้อง
 toggleBtn.MouseButton1Click:Connect(function()
 	locked = not locked
 	if locked then
-		-- บันทึกตำแหน่งและมุมมองของกล้อง ณ ปัจจุบันที่กด
 		lockedCFrame = camera.CFrame
-		camera.CameraType = Enum.CameraType.Scriptable -- เปลี่ยนโหมดกล้องให้ผู้เล่นคุมไม่ได้
+		camera.CameraType = Enum.CameraType.Scriptable
 		
-		-- เปลี่ยนสีปุ่มให้รู้ว่าเปิดอยู่ (สีฟ้าจางๆ)
-		toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+		toggleBtn.Text = "ล็อคมุมกล้อง: เปิด"
+		toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
 		toggleBtn.BackgroundTransparency = 0.4
+		toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	else
-		-- คืนค่ากล้องกลับเป็นปกติ
 		camera.CameraType = Enum.CameraType.Custom
 		lockedCFrame = nil
 		
-		-- กลับเป็นสีเดิม
-		toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+		toggleBtn.Text = "ล็อคมุมกล้อง: ปิด"
+		toggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 		toggleBtn.BackgroundTransparency = 0.6
+		toggleBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
 	end
 end)
 
