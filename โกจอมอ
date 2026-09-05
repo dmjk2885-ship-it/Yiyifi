@@ -1,0 +1,247 @@
+--[[
+    Mystery Egg Auto Farmer for Delta Executor
+    Features:
+    - Automatically destroys old UI on execution
+    - Save Position function
+    - Auto Farm Event with optimized timing to ensure prompt collection
+    - Draggable UI with Toggle ON/OFF
+]]
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+player.CharacterAdded:Connect(function(newChar)
+    character = newChar
+    humanoidRootPart = newChar:WaitForChild("HumanoidRootPart")
+end)
+
+-- Remove old UI if exists
+if CoreGui:FindFirstChild("MysteryEggFarmerUI") then
+    CoreGui.MysteryEggFarmerUI:Destroy()
+end
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "MysteryEggFarmerUI"
+screenGui.Parent = CoreGui
+screenGui.ResetOnSpawn = false
+
+-- Main Frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Parent = screenGui
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+mainFrame.Position = UDim2.new(0.5, -130, 0.3, 0)
+mainFrame.Size = UDim2.new(0, 260, 0, 240)
+mainFrame.BorderSizePixel = 0
+
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(0, 12)
+uiCorner.Parent = mainFrame
+
+-- Top Bar (Draggable)
+local topBar = Instance.new("Frame")
+topBar.Name = "TopBar"
+topBar.Parent = mainFrame
+topBar.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+topBar.Size = UDim2.new(1, 0, 0, 40)
+topBar.BorderSizePixel = 0
+
+local topCorner = Instance.new("UICorner")
+topCorner.CornerRadius = UDim.new(0, 12)
+topCorner.Parent = topBar
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Parent = topBar
+titleLabel.BackgroundTransparency = 1
+titleLabel.Position = UDim2.new(0, 12, 0, 0)
+titleLabel.Size = UDim2.new(1, -12, 1, 0)
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Text = "🐣 Mystery Egg Farmer"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextSize = 14
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Dragging logic
+local dragging, dragInput, dragStart, startPos
+topBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+topBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if dragging and dragInput then
+        local delta = dragInput.Position - dragStart
+        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- Status Label
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Parent = mainFrame
+statusLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+statusLabel.Position = UDim2.new(0, 12, 0, 52)
+statusLabel.Size = UDim2.new(1, -24, 0, 32)
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.Text = "Status: พร้อมใช้งาน (Ready)"
+statusLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
+statusLabel.TextSize = 12
+
+local statusCorner = Instance.new("UICorner")
+statusCorner.CornerRadius = UDim.new(0, 8)
+statusCorner.Parent = statusLabel
+
+-- Save Position Button
+local saveBtn = Instance.new("TextButton")
+saveBtn.Parent = mainFrame
+saveBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+saveBtn.Position = UDim2.new(0, 12, 0, 96)
+saveBtn.Size = UDim2.new(1, -24, 0, 45)
+saveBtn.Font = Enum.Font.GothamBold
+saveBtn.Text = "📌 1. เซฟจุด (Save Position)"
+saveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+saveBtn.TextSize = 13
+
+local saveCorner = Instance.new("UICorner")
+saveCorner.CornerRadius = UDim.new(0, 8)
+saveCorner.Parent = saveBtn
+
+-- Farm Toggle Button
+local farmBtn = Instance.new("TextButton")
+farmBtn.Parent = mainFrame
+farmBtn.BackgroundColor3 = Color3.fromRGB(52, 152, 219)
+farmBtn.Position = UDim2.new(0, 12, 0, 152)
+farmBtn.Size = UDim2.new(1, -24, 0, 45)
+farmBtn.Font = Enum.Font.GothamBold
+farmBtn.Text = "🚀 2. ฟาร์มอีเว้น (OFF)"
+farmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+farmBtn.TextSize = 13
+
+local farmCorner = Instance.new("UICorner")
+farmCorner.CornerRadius = UDim.new(0, 8)
+farmCorner.Parent = farmBtn
+
+-- Variables
+local savedCFrame = nil
+local isFarmActive = false
+
+saveBtn.MouseButton1Click:Connect(function()
+    if humanoidRootPart then
+        savedCFrame = humanoidRootPart.CFrame
+        statusLabel.Text = "Status: บันทึกจุดยืนเรียบร้อย!"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
+    else
+        statusLabel.Text = "Status: ไม่พบตัวละคร!"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+    end
+end)
+
+farmBtn.MouseButton1Click:Connect(function()
+    if not savedCFrame then
+        statusLabel.Text = "Status: กรุณากดเซฟจุดก่อน!"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        return
+    end
+
+    isFarmActive = not isFarmActive
+    if isFarmActive then
+        farmBtn.Text = "🚀 2. ฟาร์มอีเว้น (ON)"
+        farmBtn.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
+        statusLabel.Text = "Status: กำลังเริ่มฟาร์มอีเว้น..."
+        statusLabel.TextColor3 = Color3.fromRGB(100, 255, 255)
+    else
+        farmBtn.Text = "🚀 2. ฟาร์มอีเว้น (OFF)"
+        farmBtn.BackgroundColor3 = Color3.fromRGB(52, 152, 219)
+        statusLabel.Text = "Status: ปิดการทำงาน"
+        statusLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
+    end
+end)
+
+-- Main loop to find Mystery Egg and trigger prompt correctly
+task.spawn(function()
+    while true do
+        task.wait(0.3)
+        if isFarmActive and savedCFrame and humanoidRootPart then
+            local targetPart = nil
+            local targetPrompt = nil
+
+            -- Search workspace for Mystery Egg or ProximityPrompt with "ไปรับ" or "Mystery Egg"
+            for _, obj in pairs(Workspace:GetDescendants()) do
+                if obj:IsA("ProximityPrompt") then
+                    local parentName = obj.Parent and obj.Parent.Name:lower() or ""
+                    local actionText = obj.ActionText:lower()
+                    local objectText = obj.ObjectText:lower()
+
+                    if parentName:find("mystery") or actionText:find("ไปรับ") or actionText:find("mystery") or objectText:find("mystery") then
+                        if obj.Parent and obj.Parent:IsA("BasePart") then
+                            targetPart = obj.Parent
+                            targetPrompt = obj
+                            break
+                        elseif obj.Parent and obj.Parent:IsA("Model") and obj.Parent.PrimaryPart then
+                            targetPart = obj.Parent.PrimaryPart
+                            targetPrompt = obj
+                            break
+                        elseif obj.Parent then
+                            for _, p in pairs(obj.Parent:GetChildren()) do
+                                if p:IsA("BasePart") then
+                                    targetPart = p
+                                    targetPrompt = obj
+                                    break
+                                end
+                            end
+                            if targetPart then break end
+                        end
+                    end
+                end
+            end
+
+            if targetPart and targetPrompt then
+                statusLabel.Text = "Status: พบไข่! กำลังกดเก็บ..."
+                
+                -- Teleport to the egg
+                humanoidRootPart.CFrame = targetPart.CFrame + Vector3.new(0, 2, 0)
+                
+                -- Wait slightly for the prompt detection/cooldown to register properly
+                task.wait(0.2)
+                
+                -- Fire the prompt
+                pcall(function()
+                    fireproximityprompt(targetPrompt)
+                end)
+                
+                -- Give it another small moment to register server-side collection
+                task.wait(0.3)
+
+                -- Return back to saved position
+                if savedCFrame and humanoidRootPart then
+                    humanoidRootPart.CFrame = savedCFrame
+                end
+                
+                statusLabel.Text = "Status: เก็บสำเร็จ! กำลังรอไข่ใหม่..."
+                task.wait(0.5)
+            else
+                statusLabel.Text = "Status: กำลังหา Mystery Egg..."
+            end
+        end
+    end
+end)
