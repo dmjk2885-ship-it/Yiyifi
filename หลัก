@@ -9,8 +9,7 @@ local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local CoreGui = game:GetService("CoreGui")
 local HttpService = game:GetService("HttpService")
-end)
-end
+
 local DiscordLink = "https://discord.gg/Ugssja4wqQ"
 local SaveFileName = "GKHub_SavedCodes.json"
 
