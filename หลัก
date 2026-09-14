@@ -1,4 +1,4 @@
--- [[ GKHub v1.4.25: UPDATED TELEPORT BUTTONS + CUSTOM NOTIF IMAGE & ANIMATION ]] --
+ -- [[ GKHub v1.4.25: UPDATED TELEPORT BUTTONS + CUSTOM NOTIF IMAGE & ANIMATION ]] --
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local TweenService = game:GetService("TweenService")
@@ -9,10 +9,6 @@ local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local CoreGui = game:GetService("CoreGui")
 local HttpService = game:GetService("HttpService")
-
--- เพิ่มตัวแปรสำคัญตรงนี้กลับเข้ามาเพื่อให้ฟังก์ชันทำงานต่อได้
-local LocalPlayer = Players.LocalPlayer
-local Camera = Workspace.CurrentCamera
 
 local DiscordLink = "https://discord.gg/Ugssja4wqQ"
 local SaveFileName = "GKHub_SavedCodes.json"
@@ -34,7 +30,6 @@ local function loadSavedData()
     end
     return {}
 end
-
 local function saveSavedData(data)
     pcall(function()
         if writefile then
