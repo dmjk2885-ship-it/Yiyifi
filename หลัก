@@ -478,7 +478,7 @@ local function createHeader(text, parentTab)
     HeaderLabel.Text = text
     HeaderLabel.TextColor3 = Color3.fromRGB(100, 200, 255) -- ปรับสีหัวข้อหมวดหมู่ย่อยให้สว่างชัดเจน
     HeaderLabel.Font = Enum.Font.GothamBold
-    HeaderLabel.TextSize = 10
+    HeaderCurrentJumpPowerextSize = 10
     HeaderLabel.TextXAlignment = Enum.TextXAlignment.Left
     HeaderLabel.Parent = parentTab
     table.insert(allTextLabels, HeaderLabel)
