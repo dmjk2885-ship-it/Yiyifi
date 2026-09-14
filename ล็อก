@@ -1,0 +1,189 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+
+local _G = _G or {}
+_G.AimbotEnabled = _G.AimbotEnabled or false
+
+local LockedTarget = nil
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "GKHubAimbotGui"
+ScreenGui.Parent = CoreGui
+
+-- หน้าต่างหลัก (สีดำ ขอบสีฟ้า เลื่อนได้ ขนาดกะทัดรัด)
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 180, 0, 95)
+MainFrame.Position = UDim2.new(0, 50, 0, 50)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = ScreenGui
+
+local UICornerMain = Instance.new("UICorner")
+UICornerMain.CornerRadius = UDim.new(0, 8)
+UICornerMain.Parent = MainFrame
+
+-- ขอบสีฟ้า
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Color = Color3.fromRGB(0, 170, 255)
+UIStroke.Thickness = 2
+UIStroke.Parent = MainFrame
+
+-- ชื่อค่าย GKHub (ใช้เป็น Title Bar สำหรับลาก)
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Name = "TitleLabel"
+TitleLabel.Size = UDim2.new(1, 0, 0, 30)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.TextColor3 = Color3.fromRGB(0, 170, 255)
+TitleLabel.TextSize = 14
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.Text = "GKHub"
+TitleLabel.Parent = MainFrame
+
+-- ปุ่มเปิด/ปิด
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Name = "ToggleButton"
+ToggleButton.Size = UDim2.new(0, 150, 0, 40)
+ToggleButton.Position = UDim2.new(0.5, -75, 0, 40)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.TextSize = 13
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.Text = "Aimbot: OFF"
+ToggleButton.Parent = MainFrame
+
+local UICornerButton = Instance.new("UICorner")
+UICornerButton.CornerRadius = UDim.new(0, 6)
+UICornerButton.Parent = ToggleButton
+
+local UIStrokeButton = Instance.new("UIStroke")
+UIStrokeButton.Color = Color3.fromRGB(0, 170, 255)
+UIStrokeButton.Thickness = 1
+UIStrokeButton.Parent = ToggleButton
+
+-- ระบบเลื่อนหน้าต่าง (Draggable) รองรับทั้งเมาส์และมือถือ (Delta)
+local dragging, dragInput, dragStart, startPos
+
+TitleLabel.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = MainFrame.Position
+		
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+MainFrame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = MainFrame.Position
+		
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		if dragging then
+			local delta = input.Position - dragStart
+			MainFrame.Position = UDim2.new(
+				startPos.X.Scale, 
+				startPos.X.Offset + delta.X, 
+				startPos.Y.Scale, 
+				startPos.Y.Offset + delta.Y
+			)
+		end
+	end
+end)
+
+local function GetClosestPlayer()
+	local closestPlayer = nil
+	local shortestDistance = math.huge
+	local character = LocalPlayer.Character
+	
+	if not character or not character:FindFirstChild("HumanoidRootPart") then
+		return nil
+	end
+	
+	local myRootPos = character.HumanoidRootPart.Position
+	
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+			if humanoid and humanoid.Health > 0 then
+				local targetRoot = player.Character.HumanoidRootPart
+				local distance = (targetRoot.Position - myRootPos).Magnitude
+				
+				if distance < shortestDistance then
+					shortestDistance = distance
+					closestPlayer = player.Character
+				end
+			end
+		end
+	end
+	
+	return closestPlayer
+end
+
+ToggleButton.MouseButton1Click:Connect(function()
+	_G.AimbotEnabled = not _G.AimbotEnabled
+	if _G.AimbotEnabled then
+		ToggleButton.Text = "Aimbot: ON"
+		ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 100, 180)
+		LockedTarget = GetClosestPlayer()
+	else
+		ToggleButton.Text = "Aimbot: OFF"
+		ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+		LockedTarget = nil
+	end
+end)
+
+RunService.RenderStepped:Connect(function()
+	if not _G.AimbotEnabled then return end
+	
+	local character = LocalPlayer.Character
+	if not character then return end
+	
+	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	
+	if not rootPart or not humanoid or humanoid.Health <= 0 then return end
+	
+	if humanoid.Sit or humanoid.PlatformStand then return end
+	
+	local state = humanoid:GetState()
+	if state == Enum.HumanoidStateType.Dead 
+		or state == Enum.HumanoidStateType.FallingDown 
+		or state == Enum.HumanoidStateType.Ragdoll 
+		or state == Enum.HumanoidStateType.Physics 
+		or state == Enum.HumanoidStateType.GettingUp then
+		return
+	end
+	
+	if LockedTarget and LockedTarget:FindFirstChild("HumanoidRootPart") then
+		local targetHumanoid = LockedTarget:FindFirstChildOfClass("Humanoid")
+		if targetHumanoid and targetHumanoid.Health > 0 then
+			local targetRoot = LockedTarget.HumanoidRootPart
+			local lookVector = Vector3.new(targetRoot.Position.X, rootPart.Position.Y, targetRoot.Position.Z)
+			rootPart.CFrame = CFrame.new(rootPart.Position, lookVector)
+		else
+			LockedTarget = nil
+		end
+	else
+		LockedTarget = GetClosestPlayer()
+	end
+end)
