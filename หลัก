@@ -10,19 +10,6 @@ local Lighting = game:GetService("Lighting")
 local CoreGui = game:GetService("CoreGui")
 local HttpService = game:GetService("HttpService")
 
-local LocalPlayer = Players.LocalPlayer
-local Camera = Workspace.CurrentCamera
-
-local oldUIs = {"CustomScriptUI", "GKHub_Gui", "HJ1JK_Gui", "HJ1JK_LoadingUI", "HJ1JK_NotifGui", "D_Icon", "FOV_Circle"}
-for _, uiName in ipairs(oldUIs) do
-    if CoreGui:FindFirstChild(uiName) then
-        pcall(function() CoreGui[uiName]:Destroy() end)
-    end
-    if LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild(uiName) then
-        pcall(function() LocalPlayer.PlayerGui[uiName]:Destroy() end)
-    end
-end
-
 local DiscordLink = "https://discord.gg/Ugssja4wqQ"
 local SaveFileName = "GKHub_SavedCodes.json"
 
